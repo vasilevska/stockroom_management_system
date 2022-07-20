@@ -1,0 +1,40 @@
+version: '3'
+services:
+  database_auth:
+    image: mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+    volumes:
+      - auth_data:/var/lib/mysql
+    networks:
+      - auth_net
+  phpmyadmin_auth:
+    image: phpmyadmin
+    restart: always
+    ports:
+      - '8081:80'
+    environment:
+      PMA_HOST: database_auth
+      MYSQL_ROOT_PASSWORD: root
+    networks:
+      - auth_net
+  auth_migrations:
+    image: auth_migrations
+    environment:
+      - DATABASE_URL=database_auth
+    networks:
+      - auth_net
+  auth:
+    image: auth
+    environment:
+      - DATABASE_URL=database_auth
+    ports:
+      - '5001:5001'
+    networks:
+      - auth_net
+
+volumes:
+  auth_data:
+networks:
+  auth_net:
+    driver: overlay

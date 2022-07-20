@@ -1,0 +1,85 @@
+version: '3'
+services:
+  database_store:
+    image: mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+    volumes:
+      - store_data:/var/lib/mysql
+    networks:
+      - store_net
+      - admin_net
+  phpmyadmin_store:
+    image: phpmyadmin
+    restart: always
+    ports:
+      - '8080:80'
+    environment:
+      PMA_HOST: database_store
+      MYSQL_ROOT_PASSWORD: root
+    networks:
+      - store_net
+  store_migrations:
+    image: store_migrations
+    environment:
+      - DATABASE_URL=database_store
+    networks:
+      - store_net
+  redis:
+    image: redis
+    ports:
+      - '6379:6379'
+    networks:
+      - redis_net
+  warehouse:
+    image: warehouse
+    environment:
+      - REDIS_URL=redis
+    ports:
+      - '5002:5002'
+    networks:
+      - redis_net
+    deploy:
+      replicas: 3
+  admin:
+    image: admin
+    volumes:
+      - ./store/admin:/opt/src/admin
+    environment:
+      - DATABASE_URL=database_store
+    ports:
+      - '5003:5003'
+    networks:
+      - admin_net
+  customer:
+    image: customer
+    volumes:
+      - ./store/customer:/opt/src/customer
+    environment:
+      - DATABASE_URL=database_store
+    ports:
+      - '5000:5000'
+    networks:
+      - store_net
+  deamon:
+    image: deamon
+    environment:
+      - REDIS_URL=redis
+      - DATABASE_URL=database_store
+    networks:
+      - redis_net
+      - store_net
+volumes:
+  store_data:
+networks:
+  redis_net:
+    driver: overlay
+  store_net:
+    driver: overlay
+  admin_net:
+    driver: overlay
+
+# docker build -t ac --file ac.dockerfile .
+# docker swarm init
+# docker stack deploy --compose-file ac.yaml ac
+# docker stack deploy --compose-file epm.yaml epm
